@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.fruitchat.apfel</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/apfel</string>
+        <string>--serve</string>
+    </array>
+
+    <!-- Auto-start on login -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Keep alive — restart if it crashes -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Throttle restarts to avoid spin loops -->
+    <key>ThrottleInterval</key>
+    <integer>5</integer>
+
+    <!-- Log files -->
+    <key>StandardOutPath</key>
+    <string>/tmp/fruitchat-apfel.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/fruitchat-apfel-error.log</string>
+
+    <!-- Environment — ensure Apple Intelligence is accessible -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>PLACEHOLDER_HOME</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

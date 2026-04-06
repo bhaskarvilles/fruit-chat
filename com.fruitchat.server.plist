@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.fruitchat.server</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>PLACEHOLDER_NODE</string>
+        <string>PLACEHOLDER_SERVER</string>
+    </array>
+
+    <!-- Auto-start on login -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Keep alive — restart if it crashes -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Throttle restarts -->
+    <key>ThrottleInterval</key>
+    <integer>5</integer>
+
+    <!-- Log files -->
+    <key>StandardOutPath</key>
+    <string>/tmp/fruitchat-server.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/fruitchat-server-error.log</string>
+
+    <!-- Environment -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>PLACEHOLDER_HOME</string>
+        <key>PORT</key>
+        <string>4321</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <!-- Working directory -->
+    <key>WorkingDirectory</key>
+    <string>PLACEHOLDER_DIR</string>
+</dict>
+</plist>
