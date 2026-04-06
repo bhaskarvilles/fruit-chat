@@ -10,7 +10,11 @@
 #    chmod +x install.sh && ./install.sh
 # ╚═══════════════════════════════════════════════════════════════════╝
 
-set -euo pipefail
+# NOTE: Intentionally use -e and -o pipefail only — NOT -u.
+# The -u flag (unbound variable errors) breaks when a script is piped
+# through bash via curl because BASH_SOURCE is an empty array in that
+# context. Popular installers (Homebrew, Rustup, nvm) all omit -u.
+set -eo pipefail
 
 # ── Colours ────────────────────────────────────────────────────────────────────
 if [ -t 1 ]; then
@@ -20,19 +24,23 @@ else
   RED=''; GREEN=''; YELLOW=''; BLUE=''; CYAN=''; BOLD=''; DIM=''; RESET=''
 fi
 
-log()    { echo -e "${BLUE}▶${RESET} $*"; }
-ok()     { echo -e "${GREEN}✓${RESET} $*"; }
-warn()   { echo -e "${YELLOW}⚠${RESET} $*"; }
-err()    { echo -e "${RED}✗ ERROR:${RESET} $*" >&2; }
-step()   { echo -e "\n${BOLD}${CYAN}$*${RESET}"; }
-info()   { echo -e "  ${DIM}$*${RESET}"; }
+log()  { echo -e "${BLUE}▶${RESET} $*"; }
+ok()   { echo -e "${GREEN}✓${RESET} $*"; }
+warn() { echo -e "${YELLOW}⚠${RESET} $*"; }
+err()  { echo -e "${RED}✗ ERROR:${RESET} $*" >&2; }
+step() { echo -e "\n${BOLD}${CYAN}$*${RESET}"; }
+info() { echo -e "  ${DIM}$*${RESET}"; }
 
 # ── Config ────────────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/bhaskarvilles/fruit-chat.git"
 RAW_BASE="https://raw.githubusercontent.com/bhaskarvilles/fruit-chat/main"
-INSTALL_DIR="${FRUITCHAT_DIR:-$HOME/.fruit-chat}"
+# Use FRUITCHAT_DIR env var if set, otherwise default to ~/.fruit-chat
+INSTALL_DIR="${FRUITCHAT_DIR:-}"
+if [ -z "$INSTALL_DIR" ]; then INSTALL_DIR="$HOME/.fruit-chat"; fi
 LAUNCH_AGENTS="$HOME/Library/LaunchAgents"
-WEB_PORT="${FRUITCHAT_PORT:-4321}"
+# Use FRUITCHAT_PORT env var if set, otherwise default to 4321
+WEB_PORT="${FRUITCHAT_PORT:-}"
+if [ -z "$WEB_PORT" ]; then WEB_PORT="4321"; fi
 APFEL_PORT=11434
 
 # ── Banner ────────────────────────────────────────────────────────────────────
@@ -73,7 +81,7 @@ step "2/7  Checking Homebrew"
 if ! command -v brew &>/dev/null; then
   log "Installing Homebrew…"
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  # Add brew to PATH for Apple Silicon
+  # Ensure brew is on PATH for Apple Silicon
   if [ -f /opt/homebrew/bin/brew ]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   fi
@@ -117,31 +125,40 @@ fi
 NODE_BIN="$(command -v node)"
 ok "Node.js $NODE_VER"
 
-# ── 5. Download fruit-chat ────────────────────────────────────────────────────
+# ── 5. Download / locate fruit-chat ───────────────────────────────────────────
 step "5/7  Installing fruit-chat"
 
-# Detect if we're running the script locally (already have the files beside us)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-./install.sh}")" 2>/dev/null && pwd || echo "")"
-LOCAL_MODE=false
-if [ -f "$SCRIPT_DIR/server.js" ] && [ -f "$SCRIPT_DIR/package.json" ]; then
-  LOCAL_MODE=true
-  INSTALL_DIR="$SCRIPT_DIR"
-  info "Detected local repository at $INSTALL_DIR"
+# Detect if we're running the script from a local clone.
+# When piped through bash, BASH_SOURCE[0] is empty — handle that safely.
+SCRIPT_SOURCE=""
+if [ -n "${BASH_SOURCE+x}" ] && [ "${#BASH_SOURCE[@]}" -gt 0 ]; then
+  SCRIPT_SOURCE="${BASH_SOURCE[0]}"
 fi
 
-if [ "$LOCAL_MODE" = false ]; then
-  if [ -d "$INSTALL_DIR" ]; then
+LOCAL_MODE=false
+if [ -n "$SCRIPT_SOURCE" ] && [ "$SCRIPT_SOURCE" != "bash" ] && [ "$SCRIPT_SOURCE" != "-" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" 2>/dev/null && pwd || echo "")"
+  if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/server.js" ] && [ -f "$SCRIPT_DIR/package.json" ]; then
+    LOCAL_MODE=true
+    INSTALL_DIR="$SCRIPT_DIR"
+    info "Detected local repository at $INSTALL_DIR"
+  fi
+fi
+
+if [ "$LOCAL_MODE" = "false" ]; then
+  if [ -d "$INSTALL_DIR/.git" ]; then
     log "Updating existing installation at $INSTALL_DIR…"
     git -C "$INSTALL_DIR" pull --ff-only 2>/dev/null || {
-      warn "Pull failed, reinstalling from scratch…"
+      warn "Pull failed — reinstalling from scratch…"
       rm -rf "$INSTALL_DIR"
       git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
     }
   else
-    log "Cloning fruit-chat to $INSTALL_DIR…"
+    log "Downloading fruit-chat to $INSTALL_DIR…"
+    rm -rf "$INSTALL_DIR"
     git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
   fi
-  ok "fruit-chat downloaded to $INSTALL_DIR"
+  ok "fruit-chat ready at $INSTALL_DIR"
 fi
 
 log "Installing Node.js dependencies…"
@@ -154,7 +171,7 @@ step "6/7  Registering system daemons (auto-start on login)"
 
 mkdir -p "$LAUNCH_AGENTS"
 
-# ── apfel daemon ──
+# ── apfel daemon ──────────────────────────────────────────────────────────────
 APFEL_PLIST="$LAUNCH_AGENTS/com.fruitchat.apfel.plist"
 log "Registering apfel daemon…"
 cat > "$APFEL_PLIST" << PLIST_EOF
@@ -192,9 +209,9 @@ PLIST_EOF
 
 launchctl unload "$APFEL_PLIST" 2>/dev/null || true
 launchctl load -w "$APFEL_PLIST"
-ok "apfel daemon registered (port $APFEL_PORT)"
+ok "apfel daemon registered → port $APFEL_PORT"
 
-# ── web server daemon ──
+# ── web server daemon ──────────────────────────────────────────────────────────
 SERVER_PLIST="$LAUNCH_AGENTS/com.fruitchat.server.plist"
 log "Registering web server daemon…"
 cat > "$SERVER_PLIST" << PLIST_EOF
@@ -236,7 +253,7 @@ PLIST_EOF
 
 launchctl unload "$SERVER_PLIST" 2>/dev/null || true
 launchctl load -w "$SERVER_PLIST"
-ok "Web server daemon registered (port $WEB_PORT)"
+ok "Web server daemon registered → port $WEB_PORT"
 
 # ── 7. Health check ───────────────────────────────────────────────────────────
 step "7/7  Starting services"
@@ -263,8 +280,9 @@ else
   info "Check logs: tail -f /tmp/fruitchat-server.log"
 fi
 
-# Try to get local IP for LAN access
-LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "<your-mac-ip>")
+# Get LAN IP for cross-device access
+LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+if [ -z "$LAN_IP" ]; then LAN_IP="<your-mac-ip>"; fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
@@ -277,17 +295,17 @@ echo ""
 echo -e "  ${BOLD}Both services auto-start on every login.${RESET}"
 echo ""
 echo -e "  ${BOLD}Useful commands:${RESET}"
-echo -e "    ${DIM}View apfel log:${RESET}   tail -f /tmp/fruitchat-apfel.log"
-echo -e "    ${DIM}View server log:${RESET}  tail -f /tmp/fruitchat-server.log"
-echo -e "    ${DIM}Uninstall:${RESET}        bash ${INSTALL_DIR}/uninstall.sh"
-echo -e "    ${DIM}Update:${RESET}           curl -fsSL ${RAW_BASE}/install.sh | bash"
+echo -e "    ${DIM}Apfel logs:${RESET}   tail -f /tmp/fruitchat-apfel.log"
+echo -e "    ${DIM}Server logs:${RESET}  tail -f /tmp/fruitchat-server.log"
+echo -e "    ${DIM}Uninstall:${RESET}    bash ${INSTALL_DIR}/uninstall.sh"
+echo -e "    ${DIM}Update:${RESET}       curl -fsSL ${RAW_BASE}/install.sh | bash"
 echo ""
-echo -e "  ${BOLD}Requirements reminder:${RESET}"
+echo -e "  ${BOLD}Requirements:${RESET}"
 echo -e "    ${DIM}Apple Silicon Mac + macOS 26 (Tahoe) + Apple Intelligence enabled${RESET}"
 echo ""
 
 # Open in default browser
-if [ "$SERVER_OK" = true ] && command -v open &>/dev/null; then
+if [ "$SERVER_OK" = "true" ] && command -v open &>/dev/null; then
   sleep 1
   open "http://localhost:${WEB_PORT}"
 fi
