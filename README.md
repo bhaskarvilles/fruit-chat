@@ -21,6 +21,18 @@ That's it. The script will:
 
 ---
 
+## Demo
+
+### macOS Demo
+
+https://github.com/bhaskarvilles/fruit-chat/raw/main/public/product_video_demo/macos_video_demo.mov
+
+### Mobile / iPhone Demo
+
+https://github.com/bhaskarvilles/fruit-chat/raw/main/public/product_video_demo/mobile_demo.MP4
+
+---
+
 ## Features
 
 - 🔒 **100% On-device** — Apple Intelligence processes everything locally via `FoundationModels`
@@ -30,7 +42,7 @@ That's it. The script will:
 - 💾 **Conversation History** — All chats stored locally in your browser
 - ⚙️ **Configurable** — System prompt, temperature, max tokens
 - 🔄 **Persistent Daemon** — Auto-starts on every login/reboot via macOS LaunchAgents
-- 📱 **Responsive UI** — Glassmorphism design that works on any screen size
+- 📱 **Responsive UI** — Glassmorphism design optimised for Mac, iPad, and iPhone
 
 ## Requirements
 
@@ -38,15 +50,15 @@ That's it. The script will:
 - macOS 26 (Tahoe) or newer
 - Apple Intelligence enabled in System Settings
 - [Homebrew](https://brew.sh)
-- Node.js 18+ (auto-installed if missing)
+- Node.js 18+ *(auto-installed if missing)*
 
 ## Access
 
-After installation, open:
+After installation:
 
 ```
 http://localhost:4321           # This Mac
-http://<your-mac-ip>:4321       # Any device on your LAN
+http://<your-mac-ip>:4321       # Any device on your LAN (iPhone, iPad, etc.)
 ```
 
 ## Update
@@ -71,15 +83,17 @@ cd fruit-chat
 ./install.sh    # same script, detects local mode automatically
 ```
 
-Or run manually without daemons:
+Or run without daemons (development):
 
 ```bash
 # Terminal 1 — start Apple Intelligence server
 apfel --serve
 
 # Terminal 2 — start the web UI
-npm start          # runs: node server.js
+npm start
 ```
+
+Then open `http://localhost:4321`.
 
 ## Ports
 
