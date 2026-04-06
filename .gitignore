@@ -1,1 +1,6 @@
-node_modules
+node_modules/
+.DS_Store
+*.log
+/tmp/fruitchat-*.log
+*.plist.bak
+.env
